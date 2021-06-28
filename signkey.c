@@ -510,44 +510,7 @@ static char hexdig(unsigned char x) {
 		return 'a' + x - 10;
 }
 
-/* Since we're not sure if we'll have md5 or sha1, we present both.
- * MD5 is used in preference, but sha1 could still be useful */
-#if DROPBEAR_MD5_HMAC
-static char * sign_key_md5_fingerprint(const unsigned char* keyblob,
-		unsigned int keybloblen) {
-
-	char * ret;
-	hash_state hs;
-	unsigned char hash[MD5_HASH_SIZE];
-	unsigned int i;
-	unsigned int buflen;
-
-	md5_init(&hs);
-
-	/* skip the size int of the string - this is a bit messy */
-	md5_process(&hs, keyblob, keybloblen);
-
-	md5_done(&hs, hash);
-
-	/* "md5 hexfingerprinthere\0", each hex digit is "AB:" etc */
-	buflen = 4 + 3*MD5_HASH_SIZE;
-	ret = (char*)m_malloc(buflen);
-
-	memset(ret, 'Z', buflen);
-	strcpy(ret, "md5 ");
-
-	for (i = 0; i < MD5_HASH_SIZE; i++) {
-		unsigned int pos = 4 + i*3;
-		ret[pos] = hexdig(hash[i] >> 4);
-		ret[pos+1] = hexdig(hash[i] & 0x0f);
-		ret[pos+2] = ':';
-	}
-	ret[buflen-1] = 0x0;
-
-	return ret;
-}
-
-#else /* use SHA1 rather than MD5 for fingerprint */
+/* generate the textual SHA1 fingerprint of a key */
 static char * sign_key_sha1_fingerprint(const unsigned char* keyblob,
 		unsigned int keybloblen) {
 
@@ -581,17 +544,10 @@ static char * sign_key_sha1_fingerprint(const unsigned char* keyblob,
 	return ret;
 }
 
-#endif /* MD5/SHA1 switch */
-
-/* This will return a freshly malloced string, containing a fingerprint
- * in either sha1 or md5 */
+/* This will return a freshly malloced string, containing a fingerprint in sha1 */
 char * sign_key_fingerprint(const unsigned char* keyblob, unsigned int keybloblen) {
 
-#if DROPBEAR_MD5_HMAC
-	return sign_key_md5_fingerprint(keyblob, keybloblen);
-#else
 	return sign_key_sha1_fingerprint(keyblob, keybloblen);
-#endif
 }
 
 void buf_put_sign(buffer* buf, sign_key *key, enum signature_type sigtype, 
